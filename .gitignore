@@ -1,0 +1,26 @@
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archive helpers (build-time only)
+_archive_*.html
+_cdx.json
+_content.md
+_extract.py
+
+# Local build artefacts / temp
+*.tmp
+*.log
+
+# Node (falls später ein Build-Step dazukommt)
+node_modules/
+dist/
+.cache/
