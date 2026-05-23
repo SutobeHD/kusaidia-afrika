@@ -774,10 +774,10 @@ hr {
 .page-head__lead {
   font-family: var(--font-serif);
   font-size: clamp(1.125rem, 1.6vw, 1.375rem);
-  color: var(--ink-soft);
+  color: var(--ink);
   max-width: 56ch;
-  font-style: italic;
-  line-height: 1.5;
+  font-weight: 500;
+  line-height: 1.55;
 }
 
 .breadcrumb {
@@ -785,16 +785,17 @@ hr {
   font-size: var(--fs-xs);
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--ink-mute);
+  color: var(--ink-soft);
   margin-bottom: var(--sp-5);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-2);
+  font-weight: 500;
 }
 
 .breadcrumb a {
-  color: var(--ink-mute);
+  color: var(--ink-soft);
   text-decoration: none;
 }
 
