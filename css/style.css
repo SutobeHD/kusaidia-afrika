@@ -381,6 +381,7 @@ hr {
   text-decoration: none;
   letter-spacing: 0.005em;
   position: relative;
+  white-space: nowrap;
 }
 
 .nav__link:hover,
