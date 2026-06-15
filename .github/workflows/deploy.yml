@@ -1,0 +1,46 @@
+name: Deploy to Contabo
+
+# Bei jedem Push auf main wird die Seite per FTPS zu Contabo geladen.
+# Manuell triggerbar über den "Run workflow"-Knopf in GitHub.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Sync to Contabo Webspace
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server:    ${{ secrets.FTP_HOST }}
+          username:  ${{ secrets.FTP_USERNAME }}
+          password:  ${{ secrets.FTP_PASSWORD }}
+          protocol:  ftps
+          port:      21
+          # Zielverzeichnis auf dem Webspace (typisch: ./httpdocs/ oder ./public_html/).
+          # Falls Contabo dich direkt ins Web-Root setzt, ./
+          server-dir: ${{ secrets.FTP_TARGET_DIR }}
+          local-dir: ./
+          # Nur tatsächlich geänderte Dateien hochladen (delta sync).
+          state-name: .ftp-deploy-sync-state.json
+          # Diese Dinge gehören nicht auf den Webspace:
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            tools/**
+            _archive_*.html
+            _cdx.json
+            _content.md
+            _extract.py
+            *.swp
+            .DS_Store
+            README.md
