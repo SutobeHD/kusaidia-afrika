@@ -20,22 +20,47 @@ Du brauchst diese Anleitung nur **einmal**. Danach läuft alles automatisch: Du 
 
 ---
 
-## Schritt 1 — FTP-Zugangsdaten bei Contabo finden
+## Was wir über den Server wissen
 
-1. Logge dich ins **Contabo-Kundenportal** ein: <https://my.contabo.com>
-2. Gehe zu **Webhosting → Verwalten** (oder ähnlich)
-3. Suche den Bereich **„FTP-Zugang"** oder **„FTP-Accounts"**
+Geprüft am 16. August 2026:
+
+| | |
+|---|---|
+| **Hoster** | Contabo, Rechner `m2794.contabo.net` (IP 193.34.145.200) |
+| **Verwaltung** | **cPanel** — <https://cpanel.kusaidia-afrika.de> ist erreichbar |
+| **FTP** | Pure-FTPd mit TLS, **Port 21**, FTPS explizit. SFTP/Port 22 ist zu. |
+| **Mail** | Exim auf Port 587, Webmail unter <https://webmail.kusaidia-afrika.de> |
+| **Nameserver** | ns1–ns3.contabo.net, Domain zeigt bereits auf den richtigen Server |
+
+Weil cPanel im Einsatz ist, heißt das Web-Verzeichnis mit hoher Wahrscheinlichkeit
+**`public_html`** (nicht `httpdocs`, das wäre Plesk).
+
+---
+
+## Schritt 1 — FTP-Zugangsdaten holen
+
+Am einfachsten direkt über cPanel, das Contabo-Kundenportal wird dafür nicht gebraucht:
+
+1. <https://cpanel.kusaidia-afrika.de> aufrufen und anmelden
+2. Bereich **„FTP-Konten"** öffnen
+3. Dort steht der vollständige Benutzername und darunter der Pfad des Kontos.
+   Über **„Passwort ändern"** kannst du ein neues vergeben, falls das alte fehlt.
 4. Notiere dir:
 
-| Variable | Wert |
+| Variable | Wert für diesen Server |
 |---|---|
-| **FTP-Host** | typisch `ftp.kusaidia-afrika.de` oder `vmd12345.contaboserver.net` |
-| **FTP-Benutzername** | typisch `kusaidia-afrika.de` oder ein Kürzel |
-| **FTP-Passwort** | das hast du beim Anlegen vergeben (ggf. neu setzen lassen) |
-| **Webspace-Pfad** | typisch `/httpdocs/` oder `/public_html/` oder `./` |
+| **FTP-Host** | `kusaidia-afrika.de` (antwortet nachweislich auf Port 21) |
+| **FTP-Benutzername** | steht in cPanel unter „FTP-Konten", meist `name@kusaidia-afrika.de` |
+| **FTP-Passwort** | in cPanel neu setzen, falls unbekannt |
+| **Webspace-Pfad** | `./public_html/` (cPanel-Standard) |
 
 > **Wichtig:** Diese Daten **NIEMALS in den Chat schreiben** oder ins Repo committen.
 > Wir packen sie in GitHub Secrets — die sind verschlüsselt und nur GitHub Actions kann sie lesen.
+
+Falls die cPanel-Anmeldung nicht klappt: Die Zugangsdaten dafür stehen in der
+Einrichtungsmail von Contabo (im Postfach unter
+<https://webmail.kusaidia-afrika.de> nachsehen) oder lassen sich über den
+Contabo-Support zurücksetzen.
 
 ---
 
@@ -48,12 +73,35 @@ Du brauchst diese Anleitung nur **einmal**. Danach läuft alles automatisch: Du 
 
 | Name | Wert |
 |---|---|
-| `FTP_HOST` | dein Contabo-FTP-Host |
-| `FTP_USERNAME` | dein FTP-Benutzername |
+| `FTP_HOST` | `kusaidia-afrika.de` |
+| `FTP_USERNAME` | dein FTP-Benutzername aus cPanel |
 | `FTP_PASSWORD` | dein FTP-Passwort |
-| `FTP_TARGET_DIR` | Webspace-Pfad, z.B. `./httpdocs/` |
+| `FTP_TARGET_DIR` | `./public_html/` |
 
-Jeder Eintrag wird verschlüsselt gespeichert. Auch du als Repo-Besitzer kannst sie nach dem Speichern nicht mehr lesen — nur ersetzen.
+Die Namen müssen **exakt** so geschrieben sein — der Workflow sucht wortwörtlich
+nach `FTP_HOST`; bei `FTP_Host` findet er nichts.
+
+Jeder Eintrag wird verschlüsselt gespeichert. Auch du als Repo-Besitzer kannst sie nach dem Speichern nicht mehr lesen — nur ersetzen. Dass das Repository öffentlich ist, spielt dabei keine Rolle: Secrets liegen nicht im Repository, sondern in dessen Einstellungen, und tauchen weder in Dateien noch im Verlauf auf.
+
+---
+
+## Schritt 2b — Das alte WordPress aus dem Weg räumen
+
+**Vor dem ersten Deploy erledigen.** Unter `kusaidia-afrika.de` liegt noch eine
+defekte WordPress-Installation (sie liefert derzeit Fehler 500). Solange deren
+`index.php` und `.htaccess` im Web-Verzeichnis liegen, zeigt der Server weiter
+WordPress an — die hochgeladene `index.html` bliebe unsichtbar.
+
+1. In cPanel den **Dateimanager** öffnen und nach `public_html` wechseln
+2. **Erst sichern:** In cPanel unter **„Backup"** eine Sicherung des
+   Web-Verzeichnisses herunterladen. Falls WordPress eine Datenbank nutzt, auch
+   diese exportieren (Bereich **phpMyAdmin**).
+3. Danach den Inhalt von `public_html` leeren — insbesondere `index.php`,
+   `.htaccess`, `wp-config.php` und die Ordner `wp-admin`, `wp-content`,
+   `wp-includes`.
+
+> Die Mail-Postfächer sind davon **nicht** betroffen, die liegen außerhalb von
+> `public_html`. Webmail und die Adressen `@kusaidia-afrika.de` bleiben unverändert.
 
 ---
 
