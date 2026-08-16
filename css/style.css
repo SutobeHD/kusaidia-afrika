@@ -700,8 +700,10 @@ hr {
   position: absolute;
   inset: 0;
   z-index: 2;
+  /* In der Mitte steht der Text – dort war der Schleier bisher zu licht,
+     helle Farben gingen im Bild unter. */
   background:
-    linear-gradient(180deg, rgba(31, 26, 22, 0.55) 0%, rgba(31, 26, 22, 0.40) 50%, rgba(31, 26, 22, 0.75) 100%);
+    linear-gradient(180deg, rgba(31, 26, 22, 0.62) 0%, rgba(31, 26, 22, 0.58) 50%, rgba(31, 26, 22, 0.78) 100%);
 }
 
 .hero__inner {
@@ -786,7 +788,8 @@ hr {
 
 .hero__tagline em {
   font-style: italic;
-  color: var(--saffron);
+  font-weight: 600;
+  color: var(--vanilla);   /* heller als Safran, damit das Wort klar hervortritt */
 }
 
 .hero__lead {
