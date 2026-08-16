@@ -1,21 +1,26 @@
 name: WordPress deaktivieren
 
-# Einmalige Hilfsaktion: Die alte WordPress-Installation in public_html fängt
-# über ihre .htaccess jede Anfrage ab und leitet sie auf eine defekte index.php
-# um – dadurch ist die neue statische Seite unsichtbar (Fehler 500).
+# Einmalige Hilfsaktion in zwei Teilen.
 #
-# Dieser Workflow LÖSCHT NICHTS. Er benennt genau zwei Dateien um:
-#   .htaccess  ->  .htaccess.wordpress-alt
-#   index.php  ->  index.php.wordpress-alt
-# Beides ist jederzeit umkehrbar, alle WordPress-Dateien bleiben liegen.
+# Teil 1 (Diagnose): Klärt, wo der FTP-Zugang nach dem Anmelden landet –
+# im Konto-Wurzelverzeichnis oder direkt in public_html. Jeder Schritt läuft
+# unabhängig durch (continue-on-error), sodass sich am Muster aus Erfolg und
+# Fehlschlag ablesen lässt, wie das Verzeichnis aufgebaut ist.
 #
-# Läuft nur, wenn diese Datei selbst geändert wird, oder auf Knopfdruck.
+# Teil 2 (Aktion): Benennt .htaccess und index.php um, in beiden möglichen
+# Verzeichnissen. Es wird NICHTS gelöscht, alle WordPress-Dateien bleiben
+# liegen, jede Umbenennung ist umkehrbar.
 
 on:
   push:
     paths:
       - '.github/workflows/wordpress-deaktivieren.yml'
   workflow_dispatch:
+
+env:
+  LFTP_HEAD: >-
+    set ftp:ssl-force true;
+    set ssl:verify-certificate no;
 
 jobs:
   deaktivieren:
@@ -26,56 +31,77 @@ jobs:
       - name: lftp installieren
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
-      - name: Verzeichnis auflisten (nur lesend)
-        run: |
-          lftp -c "
-            set ftp:ssl-force true;
-            set ssl:verify-certificate no;
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            cls -la;
-          "
+      # ---------------- Teil 1: Diagnose ----------------
 
-      - name: Prüfen, ob .htaccess vorhanden ist
+      - name: 'A – Unterverzeichnis public_html vorhanden'
+        continue-on-error: true
         run: |
-          lftp -c "
-            set ftp:ssl-force true;
-            set ssl:verify-certificate no;
+          lftp -c "${{ env.LFTP_HEAD }}
             open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            ls .htaccess;
-          "
+            cd public_html;"
 
-      - name: .htaccess umbenennen
+      - name: 'B – .htaccess im Anmeldeverzeichnis'
+        continue-on-error: true
         run: |
-          lftp -c "
-            set ftp:ssl-force true;
-            set ssl:verify-certificate no;
+          lftp -c "${{ env.LFTP_HEAD }}
             open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            mv .htaccess .htaccess.wordpress-alt;
-          "
+            cat .htaccess > /dev/null;"
 
-      - name: Prüfen, ob index.php vorhanden ist
+      - name: 'C – .htaccess in public_html'
+        continue-on-error: true
         run: |
-          lftp -c "
-            set ftp:ssl-force true;
-            set ssl:verify-certificate no;
+          lftp -c "${{ env.LFTP_HEAD }}
             open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            ls index.php;
-          "
+            cat public_html/.htaccess > /dev/null;"
 
-      - name: index.php umbenennen
+      - name: 'D – unsere index.html im Anmeldeverzeichnis'
+        continue-on-error: true
         run: |
-          lftp -c "
-            set ftp:ssl-force true;
-            set ssl:verify-certificate no;
+          lftp -c "${{ env.LFTP_HEAD }}
             open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            mv index.php index.php.wordpress-alt;
-          "
+            cat index.html > /dev/null;"
 
-      - name: Ergebnis auflisten (nur lesend)
+      - name: 'E – unsere index.html in public_html'
+        continue-on-error: true
         run: |
-          lftp -c "
-            set ftp:ssl-force true;
-            set ssl:verify-certificate no;
+          lftp -c "${{ env.LFTP_HEAD }}
             open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            cls -la;
-          "
+            cat public_html/index.html > /dev/null;"
+
+      - name: 'F – index.php im Anmeldeverzeichnis'
+        continue-on-error: true
+        run: |
+          lftp -c "${{ env.LFTP_HEAD }}
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            cat index.php > /dev/null;"
+
+      # ---------------- Teil 2: Umbenennen ----------------
+      # Beide Varianten werden versucht; die unpassende scheitert folgenlos.
+
+      - name: 'G – .htaccess umbenennen (Anmeldeverzeichnis)'
+        continue-on-error: true
+        run: |
+          lftp -c "${{ env.LFTP_HEAD }}
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            mv .htaccess .htaccess.wordpress-alt;"
+
+      - name: 'H – .htaccess umbenennen (public_html)'
+        continue-on-error: true
+        run: |
+          lftp -c "${{ env.LFTP_HEAD }}
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            mv public_html/.htaccess public_html/.htaccess.wordpress-alt;"
+
+      - name: 'I – index.php umbenennen (Anmeldeverzeichnis)'
+        continue-on-error: true
+        run: |
+          lftp -c "${{ env.LFTP_HEAD }}
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            mv index.php index.php.wordpress-alt;"
+
+      - name: 'J – index.php umbenennen (public_html)'
+        continue-on-error: true
+        run: |
+          lftp -c "${{ env.LFTP_HEAD }}
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            mv public_html/index.php public_html/index.php.wordpress-alt;"
