@@ -764,16 +764,23 @@ hr {
   margin-bottom: var(--sp-3);
 }
 
-/* Kernname farbig abgesetzt, damit der Kopfbereich nicht rein weiß wirkt. */
+/* Kernname farbig abgesetzt, damit der Kopfbereich nicht rein weiß wirkt.
+   Der Schatten hält den Text auch über hellen Bildstellen lesbar – der
+   Schleier über dem Foto ist in der Mitte nur zu 40 % abgedunkelt. */
 .hero__title-name {
   color: var(--saffron);
+}
+
+.hero h1.hero__title,
+.hero__tagline {
+  text-shadow: 0 2px 14px rgba(31, 26, 22, 0.65);
 }
 
 /* Übersetzung des Namens – eine Zeile, etwas kleiner als der Titel. */
 .hero__tagline {
   font-family: var(--font-serif);
   font-size: clamp(1.25rem, 2.5vw, 1.75rem);
-  color: var(--vanilla);
+  color: var(--cream);
   margin: 0 0 var(--sp-5);
 }
 
