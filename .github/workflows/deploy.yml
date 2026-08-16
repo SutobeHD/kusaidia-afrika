@@ -27,12 +27,11 @@ jobs:
           port:      21
           # Zielverzeichnis auf dem Webspace.
           #
-          # Fest verdrahtet statt aus einem Secret: Der FTP-Zugang landet beim
-          # Anmelden im Konto-Wurzelverzeichnis, nicht im Web-Verzeichnis.
-          # Nachgewiesen am 16.08.2026 – hochgeladene Dateien waren unter der
-          # Domain nicht abrufbar, WordPress-Dateien dagegen schon.
-          # cPanel liefert die Website aus public_html aus.
-          server-dir: ./public_html/
+          # Der Zugang deployAll landet direkt im Web-Verzeichnis: Mit dem Ziel
+          # ./public_html/ brach der Upload nach 13 Sekunden ab, weil es dort
+          # kein solches Unterverzeichnis gibt. Deshalb ./ – das Anmelde-
+          # verzeichnis ist bereits das Ziel.
+          server-dir: ./
           local-dir: ./
           # Nur tatsächlich geänderte Dateien hochladen (delta sync).
           state-name: .ftp-deploy-sync-state.json
