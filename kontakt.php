@@ -203,7 +203,7 @@ if (!$gesendet) {
 // --- Eingangsbestätigung an die absendende Person ------------------------
 
 $anAbsender = "Guten Tag {$name},\n\n"
-            . "vielen Dank für Ihre Nachricht an Kusaidia Afrika – Helfen in Afrika e.V.\n"
+            . "vielen Dank für Ihre Nachricht an Kusaidia Afrika – Helfen in Afrika – e.V.\n"
             . "Wir haben sie erhalten und melden uns in der Regel innerhalb weniger Tage.\n\n"
             . "Ihre Nachricht im Wortlaut:\n"
             . str_repeat('-', 40) . "\n"
@@ -212,7 +212,7 @@ $anAbsender = "Guten Tag {$name},\n\n"
             . str_repeat('-', 40) . "\n\n"
             . "Diese Bestätigung wurde automatisch erzeugt – bitte antworten Sie nicht darauf.\n"
             . "Sie erreichen uns unter " . EMPFAENGER . ".\n\n"
-            . "Kusaidia Afrika – Helfen in Afrika e.V.\n";
+            . "Kusaidia Afrika – Helfen in Afrika – e.V.\n";
 
 $headerAbsender = [
     'From: Kusaidia Afrika <' . ABSENDER . '>',
