@@ -1,10 +1,13 @@
 name: Verzeichnis pruefen
 
-# Reine Lesediagnose. Ändert nichts auf dem Server.
+# Reine Lesediagnose – ändert nichts auf dem Webspace.
 #
-# Jeder Schritt prüft mit grep, ob ein bestimmter Name im Verzeichnis steht.
-# grep liefert – anders als lftp – einen verlässlichen Rückgabewert, das
-# Ergebnis ist dadurch am Schritt-Status ablesbar, ohne die Protokolle zu öffnen.
+# Liest das Verzeichnis, in dem der FTP-Zugang landet, und legt das Ergebnis
+# als Datei _verzeichnis.txt ins Repository. Nur so ist das Listing einsehbar,
+# ohne die Actions-Protokolle zu öffnen.
+#
+# Aufgeführt werden ausschließlich Namen von Dateien und Ordnern, keine
+# Inhalte. Die Datei wird nach der Auswertung wieder entfernt.
 
 on:
   push:
@@ -12,49 +15,58 @@ on:
       - '.github/workflows/wordpress-deaktivieren.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   pruefen:
-    name: Anmeldeverzeichnis untersuchen
+    name: Anmeldeverzeichnis auflisten
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: lftp installieren
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
-      - name: Verzeichnis einlesen
+      - name: Verzeichnisse auflisten
         run: |
-          lftp -c "
-            set ftp:ssl-force true;
-            set ssl:verify-certificate no;
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            cls -1a;
-          " > /tmp/liste.txt
-          wc -l < /tmp/liste.txt
+          {
+            echo "== Anmeldeverzeichnis =="
+            lftp -c "
+              set ftp:ssl-force true;
+              set ssl:verify-certificate no;
+              open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+              cls -1a;
+            " 2>&1 || true
 
-      - name: 'FRAGE 1 – enthält es wp-content (dann sind wir im Web-Wurzelverzeichnis)'
-        continue-on-error: true
-        run: grep -q 'wp-content' /tmp/liste.txt
+            echo
+            echo "== Unterverzeichnis public_html =="
+            lftp -c "
+              set ftp:ssl-force true;
+              set ssl:verify-certificate no;
+              open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+              cls -1a public_html/;
+            " 2>&1 || true
 
-      - name: 'FRAGE 2 – enthält es public_html'
-        continue-on-error: true
-        run: grep -q 'public_html' /tmp/liste.txt
+            echo
+            echo "== Arbeitsverzeichnis laut Server =="
+            lftp -c "
+              set ftp:ssl-force true;
+              set ssl:verify-certificate no;
+              open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+              pwd;
+            " 2>&1 || true
+          } > _verzeichnis.txt
 
-      - name: 'FRAGE 3 – enthält es unsere index.html'
-        continue-on-error: true
-        run: grep -qx 'index.html' /tmp/liste.txt
+          # Sicherheitsnetz: nichts weitergeben, was nach Zugangsdaten aussieht
+          sed -i -E 's/(password|passwd|pass)[^ ]*/[entfernt]/gi' _verzeichnis.txt
+          wc -l < _verzeichnis.txt
 
-      - name: 'FRAGE 4 – enthält es unseren Ordner assets'
-        continue-on-error: true
-        run: grep -q 'assets' /tmp/liste.txt
-
-      - name: 'FRAGE 5 – enthält es .htaccess'
-        continue-on-error: true
-        run: grep -q 'htaccess' /tmp/liste.txt
-
-      - name: 'FRAGE 6 – enthält es einen Ordner mit dem Domainnamen'
-        continue-on-error: true
-        run: grep -q 'kusaidia' /tmp/liste.txt
-
-      - name: 'FRAGE 7 – enthält es www oder htdocs'
-        continue-on-error: true
-        run: grep -qE 'www|htdocs' /tmp/liste.txt
+      - name: Ergebnis ins Repository legen
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add _verzeichnis.txt
+          git commit -m "Diagnose: Verzeichnislisting des Webspace" || exit 0
+          git push
