@@ -1902,6 +1902,16 @@ body.is-lightbox-open { overflow: hidden; }
 }
 
 /* Print */
+/* Spamfalle im Kontaktformular – für Menschen unsichtbar, für Bots sichtbar.
+   Bewusst nicht display:none, das erkennen manche Bots. */
+.hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 /* Vorstandsliste – schlicht, ohne Kärtchen */
 .roster {
   margin-top: var(--sp-6);
