@@ -25,9 +25,14 @@ jobs:
           password:  ${{ secrets.FTP_PASSWORD }}
           protocol:  ftps
           port:      21
-          # Zielverzeichnis auf dem Webspace (typisch: ./httpdocs/ oder ./public_html/).
-          # Falls Contabo dich direkt ins Web-Root setzt, ./
-          server-dir: ${{ secrets.FTP_TARGET_DIR }}
+          # Zielverzeichnis auf dem Webspace.
+          #
+          # Fest verdrahtet statt aus einem Secret: Der FTP-Zugang landet beim
+          # Anmelden im Konto-Wurzelverzeichnis, nicht im Web-Verzeichnis.
+          # Nachgewiesen am 16.08.2026 – hochgeladene Dateien waren unter der
+          # Domain nicht abrufbar, WordPress-Dateien dagegen schon.
+          # cPanel liefert die Website aus public_html aus.
+          server-dir: ./public_html/
           local-dir: ./
           # Nur tatsächlich geänderte Dateien hochladen (delta sync).
           state-name: .ftp-deploy-sync-state.json
