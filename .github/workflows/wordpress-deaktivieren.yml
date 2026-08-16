@@ -1,0 +1,81 @@
+name: WordPress deaktivieren
+
+# Einmalige Hilfsaktion: Die alte WordPress-Installation in public_html fängt
+# über ihre .htaccess jede Anfrage ab und leitet sie auf eine defekte index.php
+# um – dadurch ist die neue statische Seite unsichtbar (Fehler 500).
+#
+# Dieser Workflow LÖSCHT NICHTS. Er benennt genau zwei Dateien um:
+#   .htaccess  ->  .htaccess.wordpress-alt
+#   index.php  ->  index.php.wordpress-alt
+# Beides ist jederzeit umkehrbar, alle WordPress-Dateien bleiben liegen.
+#
+# Läuft nur, wenn diese Datei selbst geändert wird, oder auf Knopfdruck.
+
+on:
+  push:
+    paths:
+      - '.github/workflows/wordpress-deaktivieren.yml'
+  workflow_dispatch:
+
+jobs:
+  deaktivieren:
+    name: WordPress-Weiterleitung abschalten
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: lftp installieren
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Verzeichnis auflisten (nur lesend)
+        run: |
+          lftp -c "
+            set ftp:ssl-force true;
+            set ssl:verify-certificate no;
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            cls -la;
+          "
+
+      - name: Prüfen, ob .htaccess vorhanden ist
+        run: |
+          lftp -c "
+            set ftp:ssl-force true;
+            set ssl:verify-certificate no;
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            ls .htaccess;
+          "
+
+      - name: .htaccess umbenennen
+        run: |
+          lftp -c "
+            set ftp:ssl-force true;
+            set ssl:verify-certificate no;
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            mv .htaccess .htaccess.wordpress-alt;
+          "
+
+      - name: Prüfen, ob index.php vorhanden ist
+        run: |
+          lftp -c "
+            set ftp:ssl-force true;
+            set ssl:verify-certificate no;
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            ls index.php;
+          "
+
+      - name: index.php umbenennen
+        run: |
+          lftp -c "
+            set ftp:ssl-force true;
+            set ssl:verify-certificate no;
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            mv index.php index.php.wordpress-alt;
+          "
+
+      - name: Ergebnis auflisten (nur lesend)
+        run: |
+          lftp -c "
+            set ftp:ssl-force true;
+            set ssl:verify-certificate no;
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
+            cls -la;
+          "
