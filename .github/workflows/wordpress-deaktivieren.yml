@@ -1,15 +1,10 @@
-name: WordPress deaktivieren
+name: Verzeichnis pruefen
 
-# Einmalige Hilfsaktion in zwei Teilen.
+# Reine Lesediagnose. Ändert nichts auf dem Server.
 #
-# Teil 1 (Diagnose): Klärt, wo der FTP-Zugang nach dem Anmelden landet –
-# im Konto-Wurzelverzeichnis oder direkt in public_html. Jeder Schritt läuft
-# unabhängig durch (continue-on-error), sodass sich am Muster aus Erfolg und
-# Fehlschlag ablesen lässt, wie das Verzeichnis aufgebaut ist.
-#
-# Teil 2 (Aktion): Benennt .htaccess und index.php um, in beiden möglichen
-# Verzeichnissen. Es wird NICHTS gelöscht, alle WordPress-Dateien bleiben
-# liegen, jede Umbenennung ist umkehrbar.
+# Jeder Schritt prüft mit grep, ob ein bestimmter Name im Verzeichnis steht.
+# grep liefert – anders als lftp – einen verlässlichen Rückgabewert, das
+# Ergebnis ist dadurch am Schritt-Status ablesbar, ohne die Protokolle zu öffnen.
 
 on:
   push:
@@ -17,91 +12,49 @@ on:
       - '.github/workflows/wordpress-deaktivieren.yml'
   workflow_dispatch:
 
-env:
-  LFTP_HEAD: >-
-    set ftp:ssl-force true;
-    set ssl:verify-certificate no;
-
 jobs:
-  deaktivieren:
-    name: WordPress-Weiterleitung abschalten
+  pruefen:
+    name: Anmeldeverzeichnis untersuchen
     runs-on: ubuntu-latest
 
     steps:
       - name: lftp installieren
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
-      # ---------------- Teil 1: Diagnose ----------------
-
-      - name: 'A – Unterverzeichnis public_html vorhanden'
-        continue-on-error: true
+      - name: Verzeichnis einlesen
         run: |
-          lftp -c "${{ env.LFTP_HEAD }}
+          lftp -c "
+            set ftp:ssl-force true;
+            set ssl:verify-certificate no;
             open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            cd public_html;"
+            cls -1a;
+          " > /tmp/liste.txt
+          wc -l < /tmp/liste.txt
 
-      - name: 'B – .htaccess im Anmeldeverzeichnis'
+      - name: 'FRAGE 1 – enthält es wp-content (dann sind wir im Web-Wurzelverzeichnis)'
         continue-on-error: true
-        run: |
-          lftp -c "${{ env.LFTP_HEAD }}
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            cat .htaccess > /dev/null;"
+        run: grep -q 'wp-content' /tmp/liste.txt
 
-      - name: 'C – .htaccess in public_html'
+      - name: 'FRAGE 2 – enthält es public_html'
         continue-on-error: true
-        run: |
-          lftp -c "${{ env.LFTP_HEAD }}
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            cat public_html/.htaccess > /dev/null;"
+        run: grep -q 'public_html' /tmp/liste.txt
 
-      - name: 'D – unsere index.html im Anmeldeverzeichnis'
+      - name: 'FRAGE 3 – enthält es unsere index.html'
         continue-on-error: true
-        run: |
-          lftp -c "${{ env.LFTP_HEAD }}
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            cat index.html > /dev/null;"
+        run: grep -qx 'index.html' /tmp/liste.txt
 
-      - name: 'E – unsere index.html in public_html'
+      - name: 'FRAGE 4 – enthält es unseren Ordner assets'
         continue-on-error: true
-        run: |
-          lftp -c "${{ env.LFTP_HEAD }}
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            cat public_html/index.html > /dev/null;"
+        run: grep -q 'assets' /tmp/liste.txt
 
-      - name: 'F – index.php im Anmeldeverzeichnis'
+      - name: 'FRAGE 5 – enthält es .htaccess'
         continue-on-error: true
-        run: |
-          lftp -c "${{ env.LFTP_HEAD }}
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            cat index.php > /dev/null;"
+        run: grep -q 'htaccess' /tmp/liste.txt
 
-      # ---------------- Teil 2: Umbenennen ----------------
-      # Beide Varianten werden versucht; die unpassende scheitert folgenlos.
-
-      - name: 'G – .htaccess umbenennen (Anmeldeverzeichnis)'
+      - name: 'FRAGE 6 – enthält es einen Ordner mit dem Domainnamen'
         continue-on-error: true
-        run: |
-          lftp -c "${{ env.LFTP_HEAD }}
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            mv .htaccess .htaccess.wordpress-alt;"
+        run: grep -q 'kusaidia' /tmp/liste.txt
 
-      - name: 'H – .htaccess umbenennen (public_html)'
+      - name: 'FRAGE 7 – enthält es www oder htdocs'
         continue-on-error: true
-        run: |
-          lftp -c "${{ env.LFTP_HEAD }}
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            mv public_html/.htaccess public_html/.htaccess.wordpress-alt;"
-
-      - name: 'I – index.php umbenennen (Anmeldeverzeichnis)'
-        continue-on-error: true
-        run: |
-          lftp -c "${{ env.LFTP_HEAD }}
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            mv index.php index.php.wordpress-alt;"
-
-      - name: 'J – index.php umbenennen (public_html)'
-        continue-on-error: true
-        run: |
-          lftp -c "${{ env.LFTP_HEAD }}
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_HOST }}';
-            mv public_html/index.php public_html/index.php.wordpress-alt;"
+        run: grep -qE 'www|htdocs' /tmp/liste.txt
