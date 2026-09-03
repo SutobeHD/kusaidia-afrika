@@ -48,3 +48,10 @@ jobs:
             *.swp
             .DS_Store
             README.md
+            # Interne Unterlagen: DEPLOY.md beschreibt Hoster, cPanel und den
+            # Aufbau des Webspace, build-handbuch.py ist ein Hilfsskript. Beide
+            # waren bisher unter kusaidia-afrika.de/DEPLOY.md oeffentlich
+            # abrufbar. Sie muessen zusaetzlich einmal von Hand vom Server
+            # geloescht werden, denn Ausschluss verhindert nur neue Uploads.
+            DEPLOY.md
+            build-handbuch.py
