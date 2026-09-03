@@ -1,0 +1,68 @@
+name: Diagnose FTP Host
+
+# Temporaer. Prueft, ob FTP_HOST ueberhaupt auf den Rechner zeigt, auf dem die
+# Website liegt (193.34.145.200, m2794.contabo.net).
+#
+# Der Deploy scheitert mit "421 Home directory not available". Das passt zu
+# einem FTP_HOST, der auf einen alten oder anderen Server zeigt: Das Konto ist
+# dort bekannt, hat aber kein Verzeichnis.
+#
+# Es wird nichts ausgegeben. Die Antwort steckt allein in gruen/rot:
+#   gruen -> FTP_HOST zeigt auf den richtigen Rechner, Ursache liegt in cPanel
+#   rot   -> FTP_HOST zeigt woanders hin, in den Secrets zu korrigieren
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/diagnose-ftp.yml']
+
+jobs:
+
+  ftp-host-zeigt-auf-den-webserver:
+    runs-on: ubuntu-latest
+    steps:
+      - name: IP von FTP_HOST mit der IP der Website vergleichen
+        env:
+          H: ${{ secrets.FTP_HOST }}
+        run: |
+          ziel=$(getent ahostsv4 kusaidia-afrika.de | awk 'NR==1{print $1}')
+          ist=$(getent ahostsv4 "$H" | awk 'NR==1{print $1}')
+          test -n "$ziel" && test -n "$ist" && test "$ist" = "$ziel"
+
+  ftp-host-ist-die-domain-selbst:
+    runs-on: ubuntu-latest
+    steps:
+      # Gruen, wenn in FTP_HOST schlicht "kusaidia-afrika.de" steht. Damit
+      # weiss ich, ob dort ein Hostname wie ftp.<domain> oder ein alter
+      # Servername hinterlegt ist, ohne den Wert auszugeben.
+      - name: Auf die blanke Domain pruefen
+        env:
+          H: ${{ secrets.FTP_HOST }}
+        run: test "$H" = "kusaidia-afrika.de"
+
+  ftp-host-ohne-leerzeichen:
+    runs-on: ubuntu-latest
+    steps:
+      # Beim Einfuegen in GitHub rutscht leicht ein Leerzeichen oder ein
+      # Zeilenumbruch mit hinein. Gruen heisst: sauber.
+      - name: Auf Leerzeichen und Umbrueche pruefen
+        env:
+          H: ${{ secrets.FTP_HOST }}
+        run: test "$H" = "$(printf '%s' "$H" | tr -d '[:space:]')"
+
+  ftp-benutzer-ohne-leerzeichen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auf Leerzeichen und Umbrueche pruefen
+        env:
+          U: ${{ secrets.FTP_USERNAME }}
+        run: test "$U" = "$(printf '%s' "$U" | tr -d '[:space:]')"
+
+  ftp-passwort-ohne-leerzeichen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auf Leerzeichen und Umbrueche pruefen
+        env:
+          P: ${{ secrets.FTP_PASSWORD }}
+        run: test "$P" = "$(printf '%s' "$P" | tr -d '[:space:]')"
