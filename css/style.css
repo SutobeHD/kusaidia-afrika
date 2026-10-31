@@ -864,6 +864,18 @@ hr {
   overflow: hidden;
 }
 
+/* Kompakter Kopfbereich (z. B. Aktuelles): niedriger, damit mehr Inhalt sichtbar ist. */
+.page-head--compact {
+  padding: var(--sp-6) 0 var(--sp-5);
+}
+.page-head--compact h1 {
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  margin-bottom: var(--sp-3);
+}
+.page-head--compact .page-head__lead {
+  font-size: clamp(1rem, 1.3vw, 1.2rem);
+}
+
 .page-head__inner {
   max-width: var(--container);
   margin: 0 auto;
