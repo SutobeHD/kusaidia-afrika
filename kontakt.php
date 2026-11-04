@@ -34,6 +34,10 @@ const MAX_NAME    = 100;
 const MAX_BETREFF = 150;
 const MAX_TEXT    = 5000;
 
+/** Ab dieser Spam-Bewertung wird eine Einsendung still verworfen.
+ *  Höher = nachsichtiger (weniger Fehlalarme), niedriger = strenger. */
+const SPAM_SCHWELLE = 5;
+
 // ---------------------------------------------------------------- Hilfsfunktionen
 
 /**
@@ -88,6 +92,65 @@ function kontingent_frei(): bool
     $zeiten[] = $jetzt;
     @file_put_contents($datei, implode(',', $zeiten), LOCK_EX);
     return true;
+}
+
+/**
+ * Bewertet eine Einsendung anhand typischer Spam- und Scam-Merkmale.
+ * Jeder Treffer zählt Punkte; ab SPAM_SCHWELLE gilt die Einsendung als Spam.
+ *
+ * Bewusst so eingestellt, dass eine normale deutsche Anfrage (auch mit
+ * Umlaut, mit einem einzelnen Link oder einem einzelnen Reizwort) klar
+ * unter der Schwelle bleibt. Erst das Zusammentreffen mehrerer Merkmale –
+ * oder ein sehr starkes Einzelmerkmal wie fremde Schrift – führt zur Sperre.
+ */
+function spam_bewertung(string $name, string $betreff, string $text): int
+{
+    $punkte = 0;
+    $gesamt = $name . "\n" . $betreff . "\n" . $text;
+    $klein  = function_exists('mb_strtolower')
+        ? mb_strtolower($gesamt, 'UTF-8')
+        : strtolower($gesamt);
+
+    // Schriften, die der Verein über dieses Formular praktisch nie erhält.
+    // Jede für sich genügt bereits, um die Schwelle zu erreichen.
+    if (preg_match('/\p{Cyrillic}/u', $gesamt))          { $punkte += 5; } // Russisch u. a.
+    if (preg_match('/\p{Arabic}/u', $gesamt))            { $punkte += 5; }
+    if (preg_match('/\p{Han}/u', $gesamt))               { $punkte += 5; } // Chinesisch/Japanisch
+
+    // Links: eine echte Anfrage braucht selten welche, Spam fast immer viele.
+    $links = (int) preg_match_all('~https?://|www\.~i', $gesamt);
+    if ($links >= 1) { $punkte += 1; }
+    if ($links >= 3) { $punkte += 2; }
+    if ($links >= 5) { $punkte += 3; }
+
+    // BBCode- oder HTML-Links haben in einem Kontaktformular nichts zu suchen.
+    if (preg_match('~\[/?url|\[/?link|</?a\b~i', $gesamt)) { $punkte += 5; }
+
+    // Ein Link im Namensfeld ist immer ein Bot.
+    if (preg_match('~https?://|www\.~i', $name))          { $punkte += 4; }
+    // Name ist selbst eine E-Mail-Adresse.
+    if (filter_var(trim($name), FILTER_VALIDATE_EMAIL))   { $punkte += 2; }
+
+    // Typische Spam-/Scam-Begriffe (je Treffer wenig Punkte – erst mehrere
+    // zusammen, oder zusammen mit Links, lösen die Sperre aus).
+    $begriffe = [
+        'viagra', 'cialis', 'casino', ' porn', 'escort', ' loan ', 'payday',
+        'bitcoin', 'crypto', 'forex', 'binary option', 'backlink', ' seo ',
+        'search engine ranking', 'web traffic', 'gift card', 'lottery',
+        'you have won', 'you won', 'claim your prize', 'inheritance',
+        'western union', 'rolex', 'nigerian', 'bulk email', 'mass mail',
+    ];
+    foreach ($begriffe as $wort) {
+        if (strpos($klein, $wort) !== false) { $punkte += 2; }
+    }
+
+    // Sehr kurze Nachricht mit Link → klassischer „Drive-by"-Spam.
+    $textlaenge = function_exists('mb_strlen')
+        ? mb_strlen($text, 'UTF-8')
+        : strlen($text);
+    if ($links >= 1 && $textlaenge < 60) { $punkte += 2; }
+
+    return $punkte;
 }
 
 /** Gibt eine Rückmeldeseite im Seitendesign aus und beendet das Skript. */
@@ -162,6 +225,13 @@ $name = kopfzeilen_saeubern($name);
 
 if ($betreff === '') {
     $betreff = 'Anfrage über die Website';
+}
+
+// Spamschutz: Einsendung anhand typischer Spam-/Scam-Merkmale bewerten.
+// Ab der Schwelle verwerfen wir sie still und melden – wie beim Honeypot –
+// Erfolg, damit der Bot nichts dazulernt. Es wird dann nichts versendet.
+if (spam_bewertung($name, $betreff, $text) >= SPAM_SCHWELLE) {
+    seite_ausgeben('Vielen Dank', 'Ihre Nachricht wurde übermittelt.');
 }
 
 if (!kontingent_frei()) {
